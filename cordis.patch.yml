@@ -1,0 +1,15 @@
+# Inserts the small-toolkit plugin row into the profile roster.
+# Each feature can be configured under `config:` (all keys optional):
+#
+#   config:
+#     keepAwake:  { enabled: true }
+#     taskNotify:
+#       enabled: true
+#       notifyOn: [completed, error, blocked, max-tokens]   # add `aborted` to also notify when you press stop
+#       minDurationSec: 0                                    # e.g. 30 = only runs that took 30 s or longer
+#       sound: true                                          # false = silent
+#       clickOpensApp: true                                  # clicking the notification brings dsh forward
+#       appBundleId: com.deepseek.dsh                         # the app a click activates
+- insert:
+    - id: small-toolkit
+      name: dsh-small-toolkit
