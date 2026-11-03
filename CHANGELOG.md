@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 — 2026-11-03
+
+- Features can be switched on and off by hand: edit `~/Library/Application Support/dsh-small-toolkit/settings.json` (`{ "keepAwake": true, "taskNotify": false }`). No restart needed: `taskNotify` checks the switch on every task end, `keepAwake` re-reads it every 3 seconds and releases or retakes the sleep assertion.
+- The file is created with every feature on the first time the plugin loads. A missing or broken file leaves everything on. `enabled: false` in `cordis.patch.yml` still removes a feature completely.
+
 ## 0.2.2 — 2026-11-02
 
 - The task-finished notification now carries the DeepSeek Harness whale icon: the helper app bundles the icon and macOS is handed an explicit `CFBundleIconFile`.

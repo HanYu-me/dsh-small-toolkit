@@ -3,7 +3,14 @@ import assert from 'node:assert/strict'
 import * as taskNotify from '../lib/features/task-notify.js'
 import * as keepAwake from '../lib/features/keep-awake.js'
 import * as notifier from '../lib/features/notifier.js'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { apply, featureConfig, features } from '../lib/index.js'
+import { ensureSettingsFile, isEnabled, readSwitches } from '../lib/settings.js'
+
+// Never touch the real settings file from tests.
+process.env.DSH_SMALL_TOOLKIT_SETTINGS = join(mkdtempSync(join(tmpdir(), 'dsh-toolkit-')), 'settings.json')
 
 /** A fake cordis context that records listeners and lets the test fire events. */
 function fakeCtx() {
@@ -196,4 +203,56 @@ test('features can be turned off one by one; one failing feature does not stop t
   apply(ctx, { keepAwake: { enabled: false } })
   assert.match(warned, /taskNotify failed to start: boom/)
   assert.equal(ctx.effects.length, 0)
+})
+
+test('settings.json switches features; missing or broken files keep the defaults', () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'dsh-toolkit-')), 'settings.json')
+  assert.equal(isEnabled('keepAwake', file), true)
+  assert.equal(ensureSettingsFile(['keepAwake', 'taskNotify'], file), true)
+  assert.deepEqual(readSwitches(file), { keepAwake: true, taskNotify: true })
+  assert.equal(ensureSettingsFile(['keepAwake'], file), false)
+  writeFileSync(file, '{ "taskNotify": false, "keepAwake": "no" }')
+  assert.equal(isEnabled('taskNotify', file), false)
+  assert.equal(isEnabled('keepAwake', file), true)
+  writeFileSync(file, 'not json')
+  assert.equal(isEnabled('taskNotify', file), true)
+  assert.equal(readFileSync(file, 'utf8'), 'not json')
+})
+
+test('taskNotify stays silent while switched off and notifies again when switched on', () => {
+  const ctx = fakeCtx()
+  const notes = []
+  let on = false
+  taskNotify.apply(ctx, taskNotify.defaults, { platform: 'darwin', notify: (n) => { notes.push(n) }, now: () => 1000, enabled: () => on })
+  const run = () => {
+    ctx.fire('agent/status', { agent: agent('s1'), status: 'running' })
+    ctx.fire('session/event', { id: 's1' }, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
+    ctx.fire('agent/status', { agent: agent('s1'), status: 'idle' })
+  }
+  run()
+  assert.equal(notes.length, 0)
+  on = true
+  run()
+  assert.equal(notes.length, 1)
+})
+
+test('keepAwake takes and releases caffeinate as the switch changes', async () => {
+  const ctx = fakeCtx()
+  const started = []
+  let on = true
+  keepAwake.apply(ctx, keepAwake.defaults, {
+    platform: 'darwin',
+    pollMs: 10,
+    enabled: () => on,
+    spawn: () => { const child = { killed: false, on() {}, kill() { this.killed = true } }; started.push(child); return child },
+  })
+  assert.equal(started.length, 1)
+  on = false
+  await new Promise((resolve) => setTimeout(resolve, 40))
+  assert.equal(started[0].killed, true)
+  on = true
+  await new Promise((resolve) => setTimeout(resolve, 40))
+  assert.equal(started.length, 2)
+  ctx.effects[0]()
+  assert.equal(started[1].killed, true)
 })

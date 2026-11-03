@@ -22,6 +22,24 @@ dsh plugin --profile web add github:HanYu-me/dsh-small-toolkit
 
 卸载：`dsh plugin --profile web remove dsh-small-toolkit`，然后重启 dsh。
 
+## 手动开关
+
+每个功能都可以随时手动开关，**不用重启 dsh**。编辑（首次加载插件时自动生成）：
+
+`~/Library/Application Support/dsh-small-toolkit/settings.json`
+
+```json
+{
+  "keepAwake": true,
+  "taskNotify": false
+}
+```
+
+- `taskNotify`：每次任务结束时读取开关，关掉后不再弹通知。
+- `keepAwake`：每 3 秒读取一次，关掉会立刻释放防休眠，重新打开则再次接管。
+- 文件缺失、不是合法 JSON、或没写某个功能时，该功能保持开启。
+- 想让某个功能彻底不加载，仍然用下面 `cordis.patch.yml` 里的 `enabled: false`。
+
 ## 配置
 
 在 profile 的 `cordis.patch.yml` 里给 `small-toolkit` 这一行加 `config:`，改完重启 dsh：
