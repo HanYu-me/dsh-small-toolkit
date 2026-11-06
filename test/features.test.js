@@ -256,3 +256,18 @@ test('keepAwake takes and releases caffeinate as the switch changes', async () =
   ctx.effects[0]()
   assert.equal(started[1].killed, true)
 })
+
+test('the helper is compiled through xcrun, so the Xcode toolchain finds its SDK', async () => {
+  const calls = []
+  const run = async (file, args) => {
+    calls.push([file, ...args])
+    return { code: 0, stdout: '/Applications/Xcode.app/.../usr/bin/swiftc\n', stderr: '' }
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-toolkit-build-'))
+  await notifier.buildHelper({ baseDir: dir, app: join(dir, 'T.app'), run, toolchain: { xcrun: '/usr/bin/xcrun' } })
+  const compile = calls.find(call => call.includes('-Onone'))
+  assert.deepEqual(compile.slice(0, 2), ['/usr/bin/xcrun', 'swiftc'])
+  const bare = []
+  await notifier.buildHelper({ baseDir: dir, app: join(dir, 'T2.app'), run: async (file, args) => { bare.push([file, ...args]); return { code: 0, stdout: '', stderr: '' } }, toolchain: { swiftc: '/Library/Developer/CommandLineTools/usr/bin/swiftc' } })
+  assert.equal(bare.find(call => call.includes('-Onone'))[0], '/Library/Developer/CommandLineTools/usr/bin/swiftc')
+})

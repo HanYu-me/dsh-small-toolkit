@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 — 2026-11-06
+
+- The notification helper is now compiled through `xcrun swiftc`. Before, the plugin ran the Xcode toolchain's own `swiftc` directly, which cannot find the SDK that way ("unable to load standard library"), so on machines with full Xcode the helper never built and notifications fell back to the AppleScript banner without the whale icon.
+
 ## 0.3.0 — 2026-11-03
 
 - Features can be switched on and off by hand: edit `~/Library/Application Support/dsh-small-toolkit/settings.json` (`{ "keepAwake": true, "taskNotify": false }`). No restart needed: `taskNotify` checks the switch on every task end, `keepAwake` re-reads it every 3 seconds and releases or retakes the sleep assertion.
