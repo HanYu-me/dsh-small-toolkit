@@ -66,7 +66,7 @@ await page.evaluate((code) => {
   window.__failRules = false
   window.fetch = (url, init) => {
     if (window.__failRules) return Promise.reject(new Error('down'))
-    if (init?.method === 'POST') {
+    if (init?.method === 'POST' && !String(url).includes('client-boot')) {
       const body = JSON.parse(init.body)
       window.__posts.push(body)
       window.__serverRules = body

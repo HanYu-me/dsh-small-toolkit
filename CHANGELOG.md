@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 — 2026-11-06
+
+- The browser half now leaves a breadcrumb (`~/Library/Application Support/dsh-small-toolkit/client-boot.log`: `apply`, `registered`, `page-shown`) so a missing settings page can be told apart from a page that never loaded.
+
 ## 0.5.0 — 2026-11-06
 
 - Choose which conversations notify, by hand: workspaces are the big unit, conversations the small one. Switch a whole workspace on or off, then pick exceptions inside it; "all on / all off"; a search box for long workspaces; archived conversations are marked. Nothing set means notify, so existing setups behave as before.

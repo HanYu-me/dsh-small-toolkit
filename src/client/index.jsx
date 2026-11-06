@@ -16,6 +16,19 @@ import { en, zh } from './locale.js'
 export const name = 'dsh-small-toolkit-client'
 export const inject = ['slots', 'locale', 'sessions', 'workspaces']
 
+/** Report a phase to the host's breadcrumb log (best effort, never throws). */
+function ping(phase, detail) {
+  try {
+    void fetch('/small-toolkit/client-boot', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ phase, ...(detail === undefined ? {} : { detail }) }),
+    }).catch(() => {})
+  } catch {
+    // no network surface: nothing to report to
+  }
+}
+
 /** The shell services the page reads (set by apply; the page is rendered later). */
 let services
 
@@ -111,6 +124,7 @@ function NumberField({ value, min, max, disabled, onCommit, label }) {
  */
 export function ToolkitConfig({ t, view, form }) {
   const [pending, setPending] = useState({})
+  useEffect(() => { ping('page-shown', { view, form: form === undefined ? 'none' : (form.state?.status ?? 'unknown') }) }, [view, form === undefined])
   const revision = form?.state?.revision
   // A new revision means the host confirmed (or refused) the writes: drop the optimistic copies.
   useEffect(() => { setPending({}) }, [revision])
@@ -205,6 +219,7 @@ export function ToolkitConfig({ t, view, form }) {
  * @param {object} ctx - the browser plugin context.
  */
 export function apply(ctx) {
+  ping('apply')
   try {
     services = {
       sessions: (() => { try { return ctx.sessions } catch { return undefined } })(),
@@ -220,7 +235,9 @@ export function apply(ctx) {
       key: ROW_KEY,
       locale: NS,
     }, ToolkitConfig))
+    ping('registered')
   } catch (error) {
+    ping('register-failed', String(error))
     console.error('[dsh-small-toolkit] settings page registration skipped:', error)
   }
 }

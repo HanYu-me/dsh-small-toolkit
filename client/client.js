@@ -329,6 +329,17 @@ var en = {
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var name = "dsh-small-toolkit-client";
 var inject = ["slots", "locale", "sessions", "workspaces"];
+function ping(phase, detail) {
+  try {
+    void fetch("/small-toolkit/client-boot", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phase, ...detail === void 0 ? {} : { detail } })
+    }).catch(() => {
+    });
+  } catch {
+  }
+}
 var services;
 var NS = "dshSmallToolkit";
 var ROW_KEY = "dsh-small-toolkit#small-toolkit";
@@ -439,6 +450,9 @@ function NumberField({ value, min, max, disabled, onCommit, label }) {
 }
 function ToolkitConfig({ t, view, form }) {
   const [pending, setPending] = (0, import_react2.useState)({});
+  (0, import_react2.useEffect)(() => {
+    ping("page-shown", { view, form: form === void 0 ? "none" : form.state?.status ?? "unknown" });
+  }, [view, form === void 0]);
   const revision = form?.state?.revision;
   (0, import_react2.useEffect)(() => {
     setPending({});
@@ -546,6 +560,7 @@ function ToolkitConfig({ t, view, form }) {
   ] });
 }
 function apply(ctx) {
+  ping("apply");
   try {
     services = {
       sessions: (() => {
@@ -573,7 +588,9 @@ function apply(ctx) {
       key: ROW_KEY,
       locale: NS
     }, ToolkitConfig));
+    ping("registered");
   } catch (error) {
+    ping("register-failed", String(error));
     console.error("[dsh-small-toolkit] settings page registration skipped:", error);
   }
 }

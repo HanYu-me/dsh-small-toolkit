@@ -1,7 +1,7 @@
 {
   "name": "dsh-small-toolkit",
   "description": "Small DeepSeek Harness features with a settings page on the Plugins page: keep the Mac awake while dsh runs, and a macOS notification when a conversation finishes its task. Each feature has its own switch, and notifications can be chosen per workspace and per conversation, all changed live without a restart.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

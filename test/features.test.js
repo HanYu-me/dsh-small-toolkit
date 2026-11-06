@@ -5,7 +5,7 @@ import * as keepAwake from '../lib/features/keep-awake.js'
 import * as notifier from '../lib/features/notifier.js'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { apply, featureConfig, features } from '../lib/index.js'
 import { Config } from '../lib/config.js'
 import { isRef, plain } from '../lib/live.js'
@@ -408,4 +408,9 @@ test('the settings route reads and writes the rules, and refuses cross-origin wr
   assert.equal((await call('POST', '/small-toolkit/notify-rules', { workspaces: {} }, { origin: 'https://evil.example' })).status, 403)
   assert.deepEqual(readRules(file), saved.body.rules)
   assert.equal((await call('GET', '/small-toolkit/other')).status, 404)
+  assert.equal((await call('POST', '/small-toolkit/client-boot', { phase: 'apply' })).status, 200)
+  assert.equal((await call('POST', '/small-toolkit/client-boot', { phase: 'x' }, { origin: 'https://evil.example' })).status, 403)
+  const logged = readFileSync(join(dirname(file), 'client-boot.log'), 'utf8').trim().split('\n').map(JSON.parse)
+  assert.equal(logged.length, 1)
+  assert.equal(logged[0].phase, 'apply')
 })
