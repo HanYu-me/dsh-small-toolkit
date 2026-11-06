@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 — 2026-11-06
+
+- Choose which conversations notify, by hand: workspaces are the big unit, conversations the small one. Switch a whole workspace on or off, then pick exceptions inside it; "all on / all off"; a search box for long workspaces; archived conversations are marked. Nothing set means notify, so existing setups behave as before.
+- The choices are kept in `~/Library/Application Support/dsh-small-toolkit/notify-rules.json` and read on every task end (no restart). The host half serves them to the settings page at `/small-toolkit/notify-rules` (same-origin writes only).
+- A conversation's workspace is looked up in the host's workspace registry; without it only per-conversation choices apply.
+
 ## 0.4.0 — 2026-11-06
 
 - A settings page on dsh's Plugins page (row `dsh-small-toolkit#small-toolkit`): a switch per feature plus sound, "also notify when I stop a task", click-to-open and a minimum duration. Changes apply immediately and are saved in the profile config.

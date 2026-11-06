@@ -10,10 +10,14 @@
  * fails to activate as fatal.
  */
 import { useEffect, useState } from 'react'
+import { NotifyRules } from './NotifyRules.jsx'
 import { en, zh } from './locale.js'
 
 export const name = 'dsh-small-toolkit-client'
-export const inject = ['slots', 'locale']
+export const inject = ['slots', 'locale', 'sessions', 'workspaces']
+
+/** The shell services the page reads (set by apply; the page is rendered later). */
+let services
 
 const NS = 'dshSmallToolkit'
 const ROW_KEY = 'dsh-small-toolkit#small-toolkit'
@@ -186,6 +190,10 @@ export function ToolkitConfig({ t, view, form }) {
           />
         </Row>
       </div>
+      <div style={styles.group}>
+        <Row title={t('rules.title')} hint={t('rules.hint')} />
+        <NotifyRules t={t} services={services} disabled={!writable || !notifyOn} />
+      </div>
       <div style={styles.note}>{t('footer')}</div>
     </div>
   )
@@ -198,6 +206,10 @@ export function ToolkitConfig({ t, view, form }) {
  */
 export function apply(ctx) {
   try {
+    services = {
+      sessions: (() => { try { return ctx.sessions } catch { return undefined } })(),
+      workspaces: (() => { try { return ctx.workspaces } catch { return undefined } })(),
+    }
     try {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-small-toolkit: dictionaries')
     } catch (error) {

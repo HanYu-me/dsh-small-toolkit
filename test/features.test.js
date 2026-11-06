@@ -9,6 +9,9 @@ import { join } from 'node:path'
 import { apply, featureConfig, features } from '../lib/index.js'
 import { Config } from '../lib/config.js'
 import { isRef, plain } from '../lib/live.js'
+import { createRulesReader, readRules, sanitizeRules, shouldNotify, writeRules } from '../lib/rules.js'
+import { createHandler } from '../lib/routes.js'
+import { Readable } from 'node:stream'
 
 
 /** A fake cordis context that records listeners and lets the test fire events. */
@@ -328,4 +331,81 @@ test('Config marks the switches volatile; parsing yields live references with th
   assert.equal(plain(parsed).keepAwake.enabled, true)
   assert.equal(plain(parsed).taskNotify.minDurationSec, 0)
   assert.deepEqual(plain(parsed).taskNotify.notifyOn, ['completed', 'error', 'blocked', 'max-tokens'])
+})
+
+test('rules: a workspace on/off as a whole, single conversations can differ, nothing set = notify', () => {
+  const none = { workspaces: {} }
+  assert.equal(shouldNotify(none, 'w1', 's1'), true)
+  assert.equal(shouldNotify(none, undefined, 's1'), true)
+  // Workspace off, two conversations picked on.
+  const offWithPicks = { workspaces: { w1: { on: false, sessions: { s1: true, s2: true } } } }
+  assert.equal(shouldNotify(offWithPicks, 'w1', 's1'), true)
+  assert.equal(shouldNotify(offWithPicks, 'w1', 's3'), false)
+  // Workspace on, two conversations picked off.
+  const onWithExceptions = { workspaces: { w1: { on: true, sessions: { s1: false } } } }
+  assert.equal(shouldNotify(onWithExceptions, 'w1', 's1'), false)
+  assert.equal(shouldNotify(onWithExceptions, 'w1', 's2'), true)
+  // Another workspace is untouched; a conversation's own entry follows it when filed elsewhere.
+  assert.equal(shouldNotify(offWithPicks, 'w2', 's9'), true)
+  assert.equal(shouldNotify(offWithPicks, 'w2', 's1'), true)
+  // Unknown workspace (registry unavailable): per-conversation entries still apply.
+  assert.equal(shouldNotify({ workspaces: { w1: { sessions: { s1: false } } } }, undefined, 's1'), false)
+})
+
+test('rules: sanitising drops junk, and files round-trip atomically', () => {
+  assert.deepEqual(sanitizeRules(null), { workspaces: {} })
+  assert.deepEqual(sanitizeRules({ workspaces: { w1: { on: 'yes', sessions: { a: true, b: 'x' } }, '': { on: false }, w2: 5, w3: {} } }),
+    { workspaces: { w1: { sessions: { a: true } } } })
+  const file = join(mkdtempSync(join(tmpdir(), 'dsh-toolkit-rules-')), 'rules', 'notify-rules.json')
+  assert.deepEqual(readRules(file), { workspaces: {} })
+  writeRules({ workspaces: { w1: { on: false } } }, file)
+  assert.deepEqual(readRules(file), { workspaces: { w1: { on: false } } })
+  writeFileSync(file, 'not json')
+  assert.deepEqual(readRules(file), { workspaces: {} })
+  const read = createRulesReader(file)
+  writeRules({ workspaces: { w2: { on: false } } }, file)
+  assert.equal(read().workspaces.w2.on, false)
+})
+
+test('taskNotify skips conversations the rules turn off, and notifies the ones they turn on', () => {
+  const ctx = fakeCtx()
+  const notes = []
+  const off = new Set(['b'])
+  taskNotify.apply(ctx, taskNotify.defaults, {
+    platform: 'darwin', notify: (n) => { notes.push(n) }, now: () => 1000, allow: (id) => !off.has(id),
+  })
+  const run = (id) => {
+    ctx.fire('agent/status', { agent: agent(id), status: 'running' })
+    ctx.fire('session/event', { id }, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
+    ctx.fire('agent/status', { agent: agent(id), status: 'idle' })
+  }
+  run('a')
+  run('b')
+  off.delete('b')
+  run('b')
+  assert.equal(notes.length, 2)
+})
+
+test('the settings route reads and writes the rules, and refuses cross-origin writes', async () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'dsh-toolkit-route-')), 'notify-rules.json')
+  const handler = createHandler(file)
+  const call = async (method, path, body, headers = {}) => {
+    const request = Readable.from(body === undefined ? [] : [Buffer.from(JSON.stringify(body))])
+    request.method = method
+    request.url = path
+    request.headers = { host: 'localhost:1', ...headers }
+    let status = 0
+    let text = ''
+    const response = { writeHead: (code) => { status = code }, end: (data) => { text = data } }
+    await handler(request, response)
+    return { status, body: JSON.parse(text) }
+  }
+  assert.deepEqual((await call('GET', '/small-toolkit/notify-rules')).body, { rules: { workspaces: {} } })
+  const saved = await call('POST', '/small-toolkit/notify-rules', { workspaces: { w1: { on: false, sessions: { s1: true }, junk: 1 } } })
+  assert.equal(saved.status, 200)
+  assert.deepEqual(saved.body.rules, { workspaces: { w1: { on: false, sessions: { s1: true } } } })
+  assert.deepEqual(readRules(file), saved.body.rules)
+  assert.equal((await call('POST', '/small-toolkit/notify-rules', { workspaces: {} }, { origin: 'https://evil.example' })).status, 403)
+  assert.deepEqual(readRules(file), saved.body.rules)
+  assert.equal((await call('GET', '/small-toolkit/other')).status, 404)
 })
