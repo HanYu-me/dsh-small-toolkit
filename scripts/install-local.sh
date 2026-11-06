@@ -12,7 +12,7 @@ fi
 VERSION="$(node -p "require('$HERE/package.json').version")"
 rm -rf "$DEST"
 mkdir -p "$DEST"
-cp -R "$HERE/lib" "$HERE/cordis.patch.yml" "$HERE/LICENSE" "$HERE/README.md" "$HERE/CHANGELOG.md" "$HERE/package.json" "$DEST/"
+cp -R "$HERE/lib" "$HERE/client" "$HERE/cordis.patch.yml" "$HERE/LICENSE" "$HERE/README.md" "$HERE/CHANGELOG.md" "$HERE/package.json" "$DEST/"
 node -e "
 const fs=require('fs'),p='$PROFILE/package.json',d=JSON.parse(fs.readFileSync(p,'utf8'));
 d.dependencies['dsh-small-toolkit']='github:HanYu-me/dsh-small-toolkit#v$VERSION';

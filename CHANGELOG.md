@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-11-06
+
+- A settings page on dsh's Plugins page (row `dsh-small-toolkit#small-toolkit`): a switch per feature plus sound, "also notify when I stop a task", click-to-open and a minimum duration. Changes apply immediately and are saved in the profile config.
+- The plugin now ships a browser half (`client/client.js`, built from `src/client/`) and exports a `Config` schema whose switches are `volatile`, so the loader updates the running plugin in place.
+- All features always load; their `enabled` switch is read live (`enabled: false` no longer skips loading, it just silences the feature).
+- Removed the 0.3.0 `settings.json` switch file; the settings page replaces it.
+- New option `notifyOnAborted` (same as adding `aborted` to `notifyOn`).
+
 ## 0.3.1 — 2026-11-06
 
 - The notification helper is now compiled through `xcrun swiftc`. Before, the plugin ran the Xcode toolchain's own `swiftc` directly, which cannot find the SDK that way ("unable to load standard library"), so on machines with full Xcode the helper never built and notifications fell back to the AppleScript banner without the whale icon.

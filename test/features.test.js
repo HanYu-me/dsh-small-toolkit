@@ -7,10 +7,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { apply, featureConfig, features } from '../lib/index.js'
-import { ensureSettingsFile, isEnabled, readSwitches } from '../lib/settings.js'
+import { Config } from '../lib/config.js'
+import { isRef, plain } from '../lib/live.js'
 
-// Never touch the real settings file from tests.
-process.env.DSH_SMALL_TOOLKIT_SETTINGS = join(mkdtempSync(join(tmpdir(), 'dsh-toolkit-')), 'settings.json')
 
 /** A fake cordis context that records listeners and lets the test fire events. */
 function fakeCtx() {
@@ -192,7 +191,7 @@ test('formatDuration', () => {
   assert.equal(taskNotify.formatDuration(3_725_000), '1 小时 2 分')
 })
 
-test('features can be turned off one by one; one failing feature does not stop the rest', () => {
+test('one failing feature does not stop the rest, and a switched-off keepAwake never spawns', () => {
   assert.deepEqual(features.map((f) => f.id), ['keepAwake', 'taskNotify'])
   assert.equal(featureConfig(taskNotify, { taskNotify: { minDurationSec: 10 } }).minDurationSec, 10)
   assert.equal(featureConfig(taskNotify, undefined).enabled, true)
@@ -202,21 +201,6 @@ test('features can be turned off one by one; one failing feature does not stop t
   ctx.on = () => { throw new Error('boom') }
   apply(ctx, { keepAwake: { enabled: false } })
   assert.match(warned, /taskNotify failed to start: boom/)
-  assert.equal(ctx.effects.length, 0)
-})
-
-test('settings.json switches features; missing or broken files keep the defaults', () => {
-  const file = join(mkdtempSync(join(tmpdir(), 'dsh-toolkit-')), 'settings.json')
-  assert.equal(isEnabled('keepAwake', file), true)
-  assert.equal(ensureSettingsFile(['keepAwake', 'taskNotify'], file), true)
-  assert.deepEqual(readSwitches(file), { keepAwake: true, taskNotify: true })
-  assert.equal(ensureSettingsFile(['keepAwake'], file), false)
-  writeFileSync(file, '{ "taskNotify": false, "keepAwake": "no" }')
-  assert.equal(isEnabled('taskNotify', file), false)
-  assert.equal(isEnabled('keepAwake', file), true)
-  writeFileSync(file, 'not json')
-  assert.equal(isEnabled('taskNotify', file), true)
-  assert.equal(readFileSync(file, 'utf8'), 'not json')
 })
 
 test('taskNotify stays silent while switched off and notifies again when switched on', () => {
@@ -270,4 +254,78 @@ test('the helper is compiled through xcrun, so the Xcode toolchain finds its SDK
   const bare = []
   await notifier.buildHelper({ baseDir: dir, app: join(dir, 'T2.app'), run: async (file, args) => { bare.push([file, ...args]); return { code: 0, stdout: '', stderr: '' } }, toolchain: { swiftc: '/Library/Developer/CommandLineTools/usr/bin/swiftc' } })
   assert.equal(bare.find(call => call.includes('-Onone'))[0], '/Library/Developer/CommandLineTools/usr/bin/swiftc')
+})
+
+test('live references are read at the moment of use; plain values pass through', () => {
+  let value = true
+  const ref = Object.freeze({ get: () => value })
+  assert.equal(isRef(ref), true)
+  assert.equal(isRef({ a: 1 }), false)
+  assert.equal(plain({ x: ref, y: [ref], z: 3 }).x, true)
+  value = false
+  assert.deepEqual(plain({ x: ref, y: [ref], z: 3 }), { x: false, y: [false], z: 3 })
+})
+
+test('turning taskNotify off or on takes effect on the next task end, without a restart', () => {
+  const ctx = fakeCtx()
+  const notes = []
+  let on = true
+  const ref = Object.freeze({ get: () => on })
+  taskNotify.apply(ctx, { ...taskNotify.defaults, enabled: ref }, {
+    platform: 'darwin', notify: (n) => { notes.push(n) }, now: () => 1000, enabled: () => plain({ enabled: ref }).enabled !== false,
+  })
+  const run = (id) => {
+    ctx.fire('agent/status', { agent: agent(id), status: 'running' })
+    ctx.fire('session/event', { id }, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
+    ctx.fire('agent/status', { agent: agent(id), status: 'idle' })
+  }
+  run('a')
+  on = false
+  run('b')
+  on = true
+  run('c')
+  assert.equal(notes.length, 2)
+})
+
+test('notifyOnAborted, sound and minDurationSec are read live', () => {
+  const ctx = fakeCtx()
+  const notes = []
+  let aborted = false
+  let sound = true
+  let minSec = 0
+  taskNotify.apply(ctx, {
+    ...taskNotify.defaults,
+    notifyOnAborted: Object.freeze({ get: () => aborted }),
+    sound: Object.freeze({ get: () => sound }),
+    minDurationSec: Object.freeze({ get: () => minSec }),
+  }, { platform: 'darwin', notify: (n) => { notes.push(n) }, now: () => 1000 })
+  const stopRun = (id) => {
+    ctx.fire('agent/status', { agent: agent(id), status: 'running' })
+    ctx.fire('session/event', { id }, { type: 'turn/end', data: { reason: { kind: 'aborted' } } })
+    ctx.fire('agent/status', { agent: agent(id), status: 'idle' })
+  }
+  stopRun('a')
+  assert.equal(notes.length, 0)
+  aborted = true
+  sound = false
+  stopRun('b')
+  assert.equal(notes.length, 1)
+  assert.equal(notes[0].sound, false)
+  minSec = 5
+  stopRun('c')
+  assert.equal(notes.length, 1)
+})
+
+test('Config marks the switches volatile; parsing yields live references with the defaults', () => {
+  const nodes = Object.values(Config.toJSON().refs)
+  const byText = (text) => nodes.find((node) => node.meta?.description?.includes(text))
+  assert.equal(byText('保持亮屏').meta.volatile, true)
+  assert.equal(byText('任务完成提醒').meta.volatile, true)
+  assert.equal(byText('提示音').meta.volatile, true)
+  assert.ok(!byText('哪些结束方式').meta.volatile)
+  const parsed = Config({})
+  assert.equal(isRef(parsed.keepAwake.enabled), true)
+  assert.equal(plain(parsed).keepAwake.enabled, true)
+  assert.equal(plain(parsed).taskNotify.minDurationSec, 0)
+  assert.deepEqual(plain(parsed).taskNotify.notifyOn, ['completed', 'error', 'blocked', 'max-tokens'])
 })

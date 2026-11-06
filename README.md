@@ -22,27 +22,20 @@ dsh plugin --profile web add github:HanYu-me/dsh-small-toolkit
 
 卸载：`dsh plugin --profile web remove dsh-small-toolkit`，然后重启 dsh。
 
-## 手动开关
+## 设置界面（开关）
 
-每个功能都可以随时手动开关，**不用重启 dsh**。编辑（首次加载插件时自动生成）：
+装好后在 dsh 的 **插件（Plugins）页**里找到「dsh-small-toolkit」，点进它的小工具行，就有一个设置页：
 
-`~/Library/Application Support/dsh-small-toolkit/settings.json`
+- **保持亮屏**：一个开关。
+- **任务完成提醒**：一个总开关，下面是「提示音」「手动停止时也提醒」「点击通知切回 dsh」「最短用时（秒）」。
 
-```json
-{
-  "keepAwake": true,
-  "taskNotify": false
-}
-```
+所有改动**立即生效，不用重启 dsh**：任务完成提醒在下一次任务结束时读取设置；保持亮屏每 3 秒读取一次，关掉会立刻释放防休眠，重新打开则再次接管。设置写进 profile 的配置里，重启后保持。
 
-- `taskNotify`：每次任务结束时读取开关，关掉后不再弹通知。
-- `keepAwake`：每 3 秒读取一次，关掉会立刻释放防休眠，重新打开则再次接管。
-- 文件缺失、不是合法 JSON、或没写某个功能时，该功能保持开启。
-- 想让某个功能彻底不加载，仍然用下面 `cordis.patch.yml` 里的 `enabled: false`。
+> 0.3.0 的 `settings.json` 手动开关已经取消，由这个设置页取代。
 
-## 配置
+## 在配置文件里设置（可选）
 
-在 profile 的 `cordis.patch.yml` 里给 `small-toolkit` 这一行加 `config:`，改完重启 dsh：
+设置页写的就是 profile 的 `cordis.patch.yml`，你也可以直接改：
 
 ```yaml
 - id: small-toolkit
@@ -51,12 +44,15 @@ dsh plugin --profile web add github:HanYu-me/dsh-small-toolkit
       enabled: true
     taskNotify:
       enabled: true
-      notifyOn: [completed, error, blocked, max-tokens]   # 加上 aborted 则手动停止也提醒
-      minDurationSec: 0                                    # 例如 30：只提醒用时 30 秒以上的任务
-      sound: true                                          # false 为静音
-      clickOpensApp: true                                  # 关掉后改回普通通知（点击会打开脚本编辑器）
-      appBundleId: com.deepseek.dsh                         # 点击通知时切到的应用
+      notifyOnAborted: false      # true：手动停止的任务也提醒
+      sound: true                 # false 为静音
+      minDurationSec: 0           # 例如 30：只提醒用时 30 秒以上的任务
+      clickOpensApp: true         # 关掉后改回普通通知（点击会打开脚本编辑器）
+      notifyOn: [completed, error, blocked, max-tokens]   # 哪些结束方式要提醒；改这一项需重启
+      appBundleId: com.deepseek.dsh                        # 点击通知时切到的应用；改这一项需重启
 ```
+
+除 `notifyOn` 和 `appBundleId` 外，其余字段都可以在设置页里改，立即生效。
 
 ## 关于通知
 
@@ -67,9 +63,9 @@ dsh plugin --profile web add github:HanYu-me/dsh-small-toolkit
 
 ## 添加新功能
 
-1. 在 `lib/features/` 新建一个文件，导出 `id`、`defaults`（至少 `{ enabled: true }`）和 `apply(ctx, config)`。
-2. 在 `lib/index.js` 的 `features` 列表里加上它。
-3. `npm test`，然后在 dsh 里关闭再打开这个插件（或重启 dsh）。
+1. 在 `lib/features/` 新建一个文件，导出 `id`、`defaults`（至少 `{ enabled: true }`）和 `apply(ctx, config, deps)`；运行时用 `plain(config)`（`lib/live.js`）读设置，这样设置页的改动立即可见。
+2. 在 `lib/index.js` 的 `features` 列表里加上它，在 `lib/config.js` 的 Config 里加上字段（要在设置页里改的字段加 `.volatile()`），在 `src/client/index.jsx` 里加上控件。
+3. `npm test`、`node scripts/build-client.mjs && node test/ui.mjs`，然后重启 dsh。
 
 ## 许可
 

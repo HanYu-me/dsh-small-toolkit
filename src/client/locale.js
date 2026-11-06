@@ -1,0 +1,36 @@
+/** Dictionaries for the settings page (the host picks by the UI language). */
+export const zh = {
+  summary: '保持亮屏和任务完成提醒两个小功能，可以分别开关。',
+  unavailable: '设置暂时不可用（插件还没有加载，或当前配置不可编辑）。',
+  readOnly: '当前配置只读，开关不可修改。',
+  'keepAwake.title': '保持亮屏',
+  'keepAwake.hint': 'dsh 运行期间不让屏幕和系统休眠，dsh 退出后自动解除。',
+  'taskNotify.title': '任务完成提醒',
+  'taskNotify.hint': '主对话一轮任务结束时弹出系统通知，写明结果和用时。子智能体和 Agent Teams 成员不提醒。',
+  'taskNotify.sound': '提示音',
+  'taskNotify.aborted': '手动停止时也提醒',
+  'taskNotify.abortedHint': '默认你自己按停止的任务不提醒。',
+  'taskNotify.click': '点击通知切回 dsh',
+  'taskNotify.clickHint': '关掉后改用普通通知（点击会打开「脚本编辑器」）。',
+  'taskNotify.minDuration': '最短用时（秒）',
+  'taskNotify.minDurationHint': '只提醒用时不少于这么多秒的任务；0 表示全部提醒。',
+  footer: '改动立即生效，不需要重启 dsh。仅 macOS 有效。',
+}
+
+export const en = {
+  summary: 'Two small features — keep the Mac awake and a task-finished notification — each with its own switch.',
+  unavailable: 'Settings are not available yet (the plugin has not loaded, or its config is not editable).',
+  readOnly: 'This configuration is read-only; the switches cannot be changed.',
+  'keepAwake.title': 'Keep awake',
+  'keepAwake.hint': 'Stops the display and system from sleeping while dsh runs; released when dsh quits.',
+  'taskNotify.title': 'Task-finished notification',
+  'taskNotify.hint': 'A system notification when a top-level conversation finishes its turn, with the outcome and duration. Subagents and Agent Teams members never notify.',
+  'taskNotify.sound': 'Sound',
+  'taskNotify.aborted': 'Also notify when I stop a task',
+  'taskNotify.abortedHint': 'By default a task you stopped yourself stays silent.',
+  'taskNotify.click': 'Clicking brings dsh forward',
+  'taskNotify.clickHint': 'Off: a plain notification (clicking it opens Script Editor).',
+  'taskNotify.minDuration': 'Minimum duration (seconds)',
+  'taskNotify.minDurationHint': 'Only notify for tasks that took at least this long; 0 notifies for every task.',
+  footer: 'Changes apply immediately, no dsh restart. macOS only.',
+}
