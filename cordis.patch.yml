@@ -2,7 +2,7 @@
 # Each feature can be configured under `config:` (all keys optional):
 #
 #   config:
-#     keepAwake:  { enabled: true }
+#     keepAwake:  { enabled: true, allowDisplaySleep: false }   # true = the display sleeps and the screen locks as usual; the system stays awake
 #     taskNotify:
 #       enabled: true
 #       notifyOn: [completed, error, blocked, max-tokens]   # add `aborted` to also notify when you press stop

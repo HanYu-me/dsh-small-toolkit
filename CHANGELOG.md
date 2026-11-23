@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 — 2026-11-23
+
+- Keep awake: a new switch 「允许息屏和锁屏」 (`keepAwake.allowDisplaySleep`, off by default). On, caffeinate runs with `-i` only: the display sleeps and the screen locks as System Settings say, while the system stays awake and tasks keep running behind the lock. Off, it keeps `-di` as before (the display stays on, so the screensaver and the automatic lock never start). The switch is live: caffeinate restarts with the other flags within a few seconds; it is greyed out while 保持亮屏 is off.
+
 ## 0.5.1 — 2026-11-06
 
 - The browser half now leaves a breadcrumb (`~/Library/Application Support/dsh-small-toolkit/client-boot.log`: `apply`, `registered`, `page-shown`) so a missing settings page can be told apart from a page that never loaded.

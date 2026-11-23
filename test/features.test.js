@@ -244,6 +244,44 @@ test('keepAwake takes and releases caffeinate as the switch changes', async () =
   assert.equal(started[1].killed, true)
 })
 
+test('keepAwake keeps the display on by default; allowing display sleep drops -d, switched live', async () => {
+  const ctx = fakeCtx()
+  const started = []
+  let allow = false
+  keepAwake.apply(ctx, keepAwake.defaults, {
+    platform: 'darwin',
+    pollMs: 10,
+    enabled: () => true,
+    allowDisplaySleep: () => allow,
+    spawn: (file, args) => { const child = { file, args, killed: false, on() {}, kill() { this.killed = true } }; started.push(child); return child },
+  })
+  assert.equal(started.length, 1)
+  assert.equal(started[0].file, '/usr/bin/caffeinate')
+  assert.deepEqual(started[0].args, ['-di', '-w', String(process.pid)])
+  allow = true
+  await new Promise((resolve) => setTimeout(resolve, 40))
+  assert.equal(started[0].killed, true)
+  assert.equal(started.length, 2)
+  assert.deepEqual(started[1].args, ['-i', '-w', String(process.pid)])
+  // Nothing changes while the setting stays the same.
+  await new Promise((resolve) => setTimeout(resolve, 40))
+  assert.equal(started.length, 2)
+  ctx.effects[0]()
+  assert.equal(started[1].killed, true)
+})
+
+test('keepAwake reads allowDisplaySleep from its (live) config', () => {
+  const ctx = fakeCtx()
+  const started = []
+  const spawnFake = (file, args) => { const child = { args, on() {}, kill() {} }; started.push(child); return child }
+  keepAwake.apply(ctx, { enabled: true, allowDisplaySleep: { get: () => true } }, { platform: 'darwin', pollMs: 1e6, enabled: () => true, spawn: spawnFake })
+  assert.deepEqual(started[0].args.slice(0, 1), ['-i'])
+  ctx.effects[0]()
+  keepAwake.apply(ctx, { enabled: true }, { platform: 'darwin', pollMs: 1e6, enabled: () => true, spawn: spawnFake })
+  assert.deepEqual(started[1].args.slice(0, 1), ['-di'])
+  ctx.effects[1]()
+})
+
 test('the helper is compiled through xcrun, so the Xcode toolchain finds its SDK', async () => {
   const calls = []
   const run = async (file, args) => {
@@ -323,12 +361,14 @@ test('Config marks the switches volatile; parsing yields live references with th
   const nodes = Object.values(Config.toJSON().refs)
   const byText = (text) => nodes.find((node) => node.meta?.description?.includes(text))
   assert.equal(byText('保持亮屏').meta.volatile, true)
+  assert.equal(byText('允许息屏和锁屏').meta.volatile, true)
   assert.equal(byText('任务完成提醒').meta.volatile, true)
   assert.equal(byText('提示音').meta.volatile, true)
   assert.ok(!byText('哪些结束方式').meta.volatile)
   const parsed = Config({})
   assert.equal(isRef(parsed.keepAwake.enabled), true)
   assert.equal(plain(parsed).keepAwake.enabled, true)
+  assert.equal(plain(parsed).keepAwake.allowDisplaySleep, false)
   assert.equal(plain(parsed).taskNotify.minDurationSec, 0)
   assert.deepEqual(plain(parsed).taskNotify.notifyOn, ['completed', 'error', 'blocked', 'max-tokens'])
 })

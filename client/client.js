@@ -265,7 +265,9 @@ var zh = {
   unavailable: "设置暂时不可用（插件还没有加载，或当前配置不可编辑）。",
   readOnly: "当前配置只读，开关不可修改。",
   "keepAwake.title": "保持亮屏",
-  "keepAwake.hint": "dsh 运行期间不让屏幕和系统休眠，dsh 退出后自动解除。",
+  "keepAwake.hint": "dsh 运行期间不让系统休眠，任务能一直跑；默认屏幕也保持常亮。dsh 退出后自动解除。",
+  "keepAwake.allowDisplaySleep": "允许息屏和锁屏",
+  "keepAwake.allowDisplaySleepHint": "屏幕照常熄灭、按系统设置自动锁屏；系统仍不休眠，锁屏后任务继续运行。",
   "taskNotify.title": "任务完成提醒",
   "taskNotify.hint": "主对话一轮任务结束时弹出系统通知，写明结果和用时。子智能体和 Agent Teams 成员不提醒。",
   "taskNotify.sound": "提示音",
@@ -297,7 +299,9 @@ var en = {
   unavailable: "Settings are not available yet (the plugin has not loaded, or its config is not editable).",
   readOnly: "This configuration is read-only; the switches cannot be changed.",
   "keepAwake.title": "Keep awake",
-  "keepAwake.hint": "Stops the display and system from sleeping while dsh runs; released when dsh quits.",
+  "keepAwake.hint": "Stops the system from sleeping while dsh runs, so tasks keep going; by default the display stays on too. Released when dsh quits.",
+  "keepAwake.allowDisplaySleep": "Let the display sleep and the screen lock",
+  "keepAwake.allowDisplaySleepHint": "The display sleeps and the screen locks as System Settings say; the system still stays awake, so tasks keep running behind the lock.",
   "taskNotify.title": "Task-finished notification",
   "taskNotify.hint": "A system notification when a top-level conversation finishes its turn, with the outcome and duration. Subagents and Agent Teams members never notify.",
   "taskNotify.sound": "Sound",
@@ -482,17 +486,30 @@ function ToolkitConfig({ t, view, form }) {
   const notifyOn = read("taskNotify", "enabled", true) !== false;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles2.page, "data-small-toolkit-config": "", children: [
     writable ? null : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles2.note, children: t("readOnly") }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles2.group, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Row, { title: t("keepAwake.title"), hint: t("keepAwake.hint"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-      Switch,
-      {
-        label: t("keepAwake.title"),
-        checked: read("keepAwake", "enabled", true) !== false,
-        disabled: !writable,
-        onChange: (value) => {
-          void write("keepAwake", "enabled", value);
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles2.group, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Row, { title: t("keepAwake.title"), hint: t("keepAwake.hint"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        Switch,
+        {
+          label: t("keepAwake.title"),
+          checked: read("keepAwake", "enabled", true) !== false,
+          disabled: !writable,
+          onChange: (value) => {
+            void write("keepAwake", "enabled", value);
+          }
         }
-      }
-    ) }) }),
+      ) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Row, { sub: true, title: t("keepAwake.allowDisplaySleep"), hint: t("keepAwake.allowDisplaySleepHint"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        Switch,
+        {
+          label: t("keepAwake.allowDisplaySleep"),
+          checked: read("keepAwake", "allowDisplaySleep", false) === true,
+          disabled: !writable || read("keepAwake", "enabled", true) === false,
+          onChange: (value) => {
+            void write("keepAwake", "allowDisplaySleep", value);
+          }
+        }
+      ) })
+    ] }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles2.group, children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Row, { title: t("taskNotify.title"), hint: t("taskNotify.hint"), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
         Switch,

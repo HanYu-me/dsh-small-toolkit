@@ -133,8 +133,11 @@ const switches = () => page.evaluate(() => [...document.querySelectorAll('[role=
   label: el.getAttribute('aria-label'), on: el.getAttribute('aria-checked') === 'true', disabled: el.disabled,
 })))
 let list = await switches()
-check('five switches are drawn with their labels', list.length === 5 && list[0].label === 'keepAwake.title', JSON.stringify(list))
-check('values come from the live config', list[0].on === true && list[1].on === true && list[3].on === false, JSON.stringify(list))
+const byLabel = (items, label) => items.find(item => item.label === label)
+check('six switches are drawn with their labels', list.length === 6 && list[0].label === 'keepAwake.title' && list[1].label === 'keepAwake.allowDisplaySleep', JSON.stringify(list))
+check('values come from the live config',
+  byLabel(list, 'keepAwake.title').on === true && byLabel(list, 'keepAwake.allowDisplaySleep').on === false
+    && byLabel(list, 'taskNotify.title').on === true && byLabel(list, 'taskNotify.aborted').on === false, JSON.stringify(list))
 
 await page.click('[role="switch"][aria-label="keepAwake.title"]')
 await page.waitForTimeout(150)
@@ -149,6 +152,15 @@ check('the switch flips at once (optimistic)', list[0].on === false, JSON.string
 await page.evaluate((v) => window.__render({ status: 'ready', writable: true, revision: 2, value: v }), { ...full, keepAwake: { enabled: false } })
 list = await switches()
 check('a new revision shows the confirmed value', list[0].on === false)
+check('with keepAwake off, "let the display sleep" is disabled', byLabel(list, 'keepAwake.allowDisplaySleep').disabled === true, JSON.stringify(list))
+
+// Letting the display sleep (and the screen lock) is its own switch under keepAwake.
+await page.evaluate((v) => window.__render({ status: 'ready', writable: true, revision: 20, value: v }), full)
+await page.click('[role="switch"][aria-label="keepAwake.allowDisplaySleep"]')
+await page.waitForTimeout(150)
+calls = await page.evaluate(() => window.__calls)
+check('the display-sleep switch writes keepAwake.allowDisplaySleep',
+  JSON.stringify(calls.at(-1).ops) === JSON.stringify([{ op: 'set', path: ['keepAwake', 'allowDisplaySleep'], value: true }]), JSON.stringify(calls.at(-1)))
 
 await page.click('[role="switch"][aria-label="taskNotify.aborted"]')
 await page.waitForTimeout(100)
@@ -172,7 +184,8 @@ check('an out-of-range number is clamped (3600)', calls.at(-1).ops[0].value === 
 await page.evaluate((v) => window.__render({ status: 'ready', writable: true, revision: 3, value: v }), { ...full, taskNotify: { ...full.taskNotify, enabled: false } })
 list = await switches()
 check('with the notification off its option switches are disabled',
-  list[1].disabled === false && list.slice(2).every(item => item.disabled), JSON.stringify(list))
+  byLabel(list, 'taskNotify.title').disabled === false && byLabel(list, 'keepAwake.allowDisplaySleep').disabled === false
+    && ['taskNotify.sound', 'taskNotify.aborted', 'taskNotify.click'].every(label => byLabel(list, label).disabled), JSON.stringify(list))
 
 // Read-only and unavailable states.
 await page.evaluate((v) => window.__render({ status: 'ready', writable: false, revision: 4, value: v }), full)

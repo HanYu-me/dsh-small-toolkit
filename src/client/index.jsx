@@ -159,6 +159,14 @@ export function ToolkitConfig({ t, view, form }) {
             onChange={(value) => { void write('keepAwake', 'enabled', value) }}
           />
         </Row>
+        <Row sub title={t('keepAwake.allowDisplaySleep')} hint={t('keepAwake.allowDisplaySleepHint')}>
+          <Switch
+            label={t('keepAwake.allowDisplaySleep')}
+            checked={read('keepAwake', 'allowDisplaySleep', false) === true}
+            disabled={!writable || read('keepAwake', 'enabled', true) === false}
+            onChange={(value) => { void write('keepAwake', 'allowDisplaySleep', value) }}
+          />
+        </Row>
       </div>
       <div style={styles.group}>
         <Row title={t('taskNotify.title')} hint={t('taskNotify.hint')}>

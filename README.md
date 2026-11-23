@@ -6,7 +6,7 @@ DeepSeek Harness（dsh）的小功能合集。每个功能是 `lib/features/` �
 
 | 功能 | 配置键 | 作用 |
 |---|---|---|
-| 保持亮屏 | `keepAwake` | dsh 运行期间阻止 Mac 息屏和休眠（`caffeinate -di -w <dsh 进程>`），dsh 退出后自动解除 |
+| 保持亮屏 | `keepAwake` | dsh 运行期间阻止 Mac 休眠，任务能一直跑（`caffeinate -di -w <dsh 进程>`），dsh 退出后自动解除。默认屏幕也常亮，这时屏保不启动、也就不会自动锁屏；打开「允许息屏和锁屏」（`allowDisplaySleep`）后改用 `caffeinate -i`：屏幕照常熄灭、按系统设置自动锁屏，系统仍不休眠，锁屏后任务继续运行。手动锁屏（Ctrl+Cmd+Q）任何时候都有效 |
 | 任务完成提醒 | `taskNotify` | 主对话的一轮任务结束时，弹出 macOS 系统通知：对话标题、结果（完成 / 出错 / 被拦截 / 输出达到上限）和用时。**点击通知会切回 DeepSeek Harness 窗口**。子智能体、Agent Teams 成员不提醒；你手动停止的任务默认不提醒 |
 
 两项功能都只在 macOS 上生效。
@@ -57,6 +57,7 @@ dsh plugin --profile web add github:HanYu-me/dsh-small-toolkit
   config:
     keepAwake:
       enabled: true
+      allowDisplaySleep: false    # true：屏幕照常熄灭、自动锁屏，系统仍不休眠
     taskNotify:
       enabled: true
       notifyOnAborted: false      # true：手动停止的任务也提醒
